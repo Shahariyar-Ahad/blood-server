@@ -5,6 +5,7 @@ node_modules/
 # Environment Variables File
 
 .env 
+blood-donar-firebase-admin.json
 
 # Log files
 *.log
