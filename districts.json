@@ -1,0 +1,55 @@
+
+[
+  {
+    "id": 1,
+    "name": "Dhaka",
+    "upazilla": [
+      { "id": "1.1", "name": "Dhamrai" },
+      { "id": "1.2", "name": "Dohar" },
+      { "id": "1.3", "name": "Keraniganj" },
+      { "id": "1.4", "name": "Nawabganj" },
+      { "id": "1.5", "name": "Savar" },
+      { "id": "1.6", "name": "Dhaka" }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Chittagong",
+    "upazilla": [
+      { "id": "2.1", "name": "Anwara" },
+      { "id": "2.2", "name": "Boalkhali" },
+      { "id": "2.3", "name": "Patiya" },
+      { "id": "2.4", "name": "Rangunia" }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Rajshahi",
+    "upazilla": [
+      { "id": "3.1", "name": "Bagha" },
+      { "id": "3.2", "name": "Bagmara" },
+      { "id": "3.3", "name": "Godagari" },
+      { "id": "3.4", "name": "Puthia" }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Khulna",
+    "upazilla": [
+      { "id": "4.1", "name": "Batiaghata" },
+      { "id": "4.2", "name": "Dacope" },
+      { "id": "4.3", "name": "Dumuria" },
+      { "id": "4.4", "name": "Koyra" }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Sylhet",
+    "upazilla": [
+      { "id": "5.1", "name": "Balaganj" },
+      { "id": "5.2", "name": "Companiganj" },
+      { "id": "5.3", "name": "Fenchuganj" },
+      { "id": "5.4", "name": "Goala Bazar" }
+    ]
+  }
+]

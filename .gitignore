@@ -1,0 +1,19 @@
+# Node Modules Folder
+
+node_modules/
+
+# Environment Variables File
+
+.env 
+
+# Log files
+*.log
+
+# Build files 
+/dist
+/build 
+
+# Dependency directories
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
