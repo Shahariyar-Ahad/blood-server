@@ -1,19 +1,35 @@
-/// server.js (শুধুমাত্র প্রয়োজনীয় রুটগুলো)
-
-// server.js (আপডেট করা কোড)
-
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const fs = require('fs'); 
 const path = require('path'); 
+const admin = require('firebase-admin'); 
 
-require('dotenv').config();
+require('dotenv').config(); 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 4000; 
 const app = express();
+try {
+    
+    const serviceAccount = require('./blood-donar-firebase-admin.json'); 
+    
+    if (!admin.apps.length) { 
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+    }
+    console.log("✅ Firebase Admin Initialized Successfully!");
+} catch (error) {
+    console.error("❌ Firebase Initialization Error:", error.message);
+}
+// index.js
+const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+const serviceAccount = JSON.parse(decoded); 
+admin.initializeApp({
+    credential:admin.credential.cert(serviceAccount)
+})
 
 // Configuration
 const jwtSecret = process.env.ACCESS_TOKEN_SECRET; 
@@ -77,7 +93,7 @@ const verifyJWT = (req, res, next) => {
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
         
         const database = client.db('bloodDonarDB'); 
         const userCollections = database.collection('users');
@@ -436,10 +452,12 @@ app.get('/users/admin/:email', async (req, res) => {
 });
 // শুধুমাত্র 'published' স্ট্যাটাসের ব্লগগুলো দেখানোর জন্য
 app.get('/blogs', async (req, res) => {
-    const query = { status: 'published' }; // যদি আপনি ড্রাফট সিস্টেম রাখেন
-    const result = await blogCollections.find(query).sort({ createdAt: -1 }).toArray();
-    res.send(result);
-});
+    const blogs = await blogCollections
+      .find({ status: 'published' })
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.send(blogs);
+  });
 //payment er jonno 
 
 const paymentCollection = database.collection('payments');
@@ -593,21 +611,21 @@ app.post('/donation-requests', async (req, res) => {
         // ----------------------------------------------------
         // PING & START
         // ----------------------------------------------------
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("🟢 Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        // ... (Optional cleanup)
+        
     }
 }
 run().catch(console.dir);
 
 
-// রুট রুট
+
 app.get('/', (req, res) => {
     res.send("🩸 Blood Donor Server is Running and Ready for Action! 🚀");
 });
 
-// সার্ভার চালু করা
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
