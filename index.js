@@ -39,7 +39,8 @@ let districtsData = [];
 // Middleware
 app.use(cors({
     origin: [
-        'http://localhost:5173', // আপনার ফ্রন্টএন্ড পোর্ট
+        'http://localhost:5173',
+         'https://bd-blood-donar-2025.web.app'
     ], 
     credentials: true,
 }));
@@ -98,78 +99,98 @@ async function run() {
         const database = client.db('bloodDonarDB'); 
         const userCollections = database.collection('users');
         const donationCollections = database.collection('donationRequests');
-        
+        const paymentCollection = database.collection('payments');
         // ----------------------------------------------------
         // A. AUTHENTICATION & USER APIs
         // ----------------------------------------------------
 
-        // ১. রেজিস্ট্রেশন (ইউজার তৈরি) API: /users/register (Public)
-        app.post('/users/register', async (req, res) => {
-            try {
-                const userInfo = req.body;
-                const { email, password } = userInfo;
+        
+      // ১. রেজিস্ট্রেশন (ইউজার তৈরি) API: /users/register (Public)
+app.post('/users/register', async (req, res) => {
+    try {
+        const userInfo = req.body;
+        const { email, password, name, image } = userInfo; // image ফিল্ডটি ফ্রন্টএন্ড থেকে আসবে
 
-                const existingUser = await userCollections.findOne({ email });
-                if (existingUser) {
-                    return res.status(400).send({ message: 'User already exists with this email' });
-                }
+        // ইউজার আগে থেকেই আছে কিনা চেক করা
+        const existingUser = await userCollections.findOne({ email });
+        if (existingUser) {
+            return res.status(400).send({ message: 'User already exists with this email' });
+        }
 
-                const hashedPassword = await bcrypt.hash(password, 10);
-                
-                const newUser = {
-                    ...userInfo,
-                    password: hashedPassword,
-                    role: 'donor', 
-                    status: 'active', 
-                    createdAt: new Date(),
-                };
+        // পাসওয়ার্ড হ্যাশ করা
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // নতুন ইউজার অবজেক্ট তৈরি
+        const newUser = {
+            ...userInfo,
+            password: hashedPassword,
+            role: 'donor',    // ডিফল্ট রোল
+            status: 'active', // ডিফল্ট স্ট্যাটাস
+            createdAt: new Date(),
+        };
 
-                const result = await userCollections.insertOne(newUser);
-                
-                const token = jwt.sign({ email: newUser.email, role: newUser.role, name: newUser.name }, jwtSecret, { expiresIn: '7d' });
+        // ডাটাবেজে সেভ করা
+        const result = await userCollections.insertOne(newUser);
+        
+        // টোকেন তৈরি করা (Payload-এ সব জরুরি তথ্য রাখা হয়েছে)
+        const token = jwt.sign(
+            { email: newUser.email, role: newUser.role, name: newUser.name }, 
+            jwtSecret, 
+            { expiresIn: '7d' }
+        );
 
-                res.send({ insertedId: result.insertedId, user: { email: newUser.email, role: newUser.role, name: newUser.name, status: newUser.status }, token: token });
-            } catch (error) {
-                console.error("Registration error:", error);
-                res.status(500).send({ message: 'Error during user registration', error: error.message });
-            }
+        // ফ্রন্টএন্ডে ইউজার ডাটা এবং টোকেন পাঠানো
+        // এখানে image: newUser.image পাঠানোই মূল সমাধান
+        res.send({ 
+            insertedId: result.insertedId, 
+            user: { 
+                email: newUser.email, 
+                role: newUser.role, 
+                name: newUser.name, 
+                image: newUser.image, // এটিই আপনার রিফ্রেশ সমস্যা সমাধান করবে
+                status: newUser.status 
+            }, 
+            token: token 
         });
 
-        // ২. লগইন (টোকেন জেনারেশন) API: /users/login (Public)
-        app.post('/users/login', async (req, res) => {
-            try {
-                const { email, password } = req.body;
+    } catch (error) {
+        console.error("Registration error:", error);
+        res.status(500).send({ message: 'Error during user registration', error: error.message });
+    }
+});
 
-                const user = await userCollections.findOne({ email });
-                if (!user) {
-                    return res.status(401).send({ message: 'Invalid credentials: User not found' });
-                }
+        // ২. লগইন (টোকেন জেনারেশন) API
+app.post('/users/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await userCollections.findOne({ email });
 
-                if (user.status === 'blocked') {
-                    return res.status(403).send({ message: 'Your account is currently blocked. Please contact admin.' });
-                }
+        if (!user) {
+            return res.status(401).send({ message: 'Invalid credentials' });
+        }
 
-                const isMatch = await bcrypt.compare(password, user.password);
-                if (!isMatch) {
-                    return res.status(401).send({ message: 'Invalid credentials: Password does not match' });
-                }
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).send({ message: 'Password does not match' });
+        }
 
-                const token = jwt.sign({ email: user.email, role: user.role, name: user.name }, jwtSecret, { expiresIn: '7d' });
+        const token = jwt.sign({ email: user.email, role: user.role, name: user.name }, jwtSecret, { expiresIn: '7d' });
 
-                res.send({ 
-                    user: { 
-                        email: user.email, 
-                        role: user.role, 
-                        name: user.name, 
-                        status: user.status 
-                    }, 
-                    token 
-                });
-            } catch (error) {
-                console.error("Login error:", error);
-                res.status(500).send({ message: 'Error during login', error: error.message });
-            }
-        }); 
+        // ইমেজ সহ সব দরকারি ডাটা পাঠান
+        res.send({ 
+            user: { 
+                email: user.email, 
+                role: user.role, 
+                name: user.name, 
+                image: user.image, // এটি যোগ করা হয়েছে
+                status: user.status 
+            }, 
+            token 
+        });
+    } catch (error) {
+        res.status(500).send({ message: 'Error during login' });
+    }
+});
         
         // **৩. ইউজার তথ্য / রোল চেক API: /users/:email (Private) - 404 ফিক্স**
         app.get('/users/:email', verifyJWT, async (req, res) => {
@@ -460,19 +481,64 @@ app.get('/blogs', async (req, res) => {
   });
 //payment er jonno 
 
-const paymentCollection = database.collection('payments');
+// --------------------- Stripe PaymentIntent ---------------------
+app.post('/create-payment-intent', async (req, res) => {
+  const { price } = req.body;
+  const amount = Math.round(price * 100);
 
-// ১. নতুন পেমেন্ট সেভ করা (ইউজার যখন ফর্ম সাবমিট করবে)
-app.post('/payments', async (req, res) => {
-    const payment = req.body;
-    const result = await paymentCollection.insertOne(payment);
-    res.send(result);
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: 'bdt',
+      payment_method_types: ['card'],
+    });
+    res.send({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: 'Stripe PaymentIntent creation failed' });
+  }
 });
 
-// ২. সব পেমেন্ট হিস্ট্রি দেখা (টেবিলের জন্য)
-app.get('/payments', async (req, res) => {
-    const result = await paymentCollection.find().sort({ date: -1 }).toArray();
+
+// --------------------- Save payment ---------------------
+app.post('/payments', async (req, res) => {
+  try {
+    const payment = req.body;
+
+    // Validate minimal fields
+    if (!payment.amount || !payment.name || !payment.method) {
+      return res.status(400).send({ error: 'Invalid payment data. amount, name, method required.' });
+    }
+
+    // For manual payment, generate a pseudo transactionId if not provided
+    if (!payment.transactionId) {
+      payment.transactionId = `${payment.method}-${Date.now()}`;
+    }
+
+    payment.date = new Date();
+
+    const result = await paymentCollection.insertOne(payment);
     res.send(result);
+  } catch (err) {
+    console.error("Save payment error:", err);
+    res.status(500).send({ error: 'Internal server error' });
+  }
+});
+
+
+// --------------------- Get all payments ---------------------
+app.get('/payments', async (req, res) => {
+  const result = await paymentCollection.find().sort({ date: -1 }).toArray();
+  res.send(result);
+});
+
+
+// --------------------- Total funds ---------------------
+app.get('/payments/total', async (req, res) => {
+  const result = await paymentCollection.aggregate([
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]).toArray();
+  res.send({ total: result[0]?.total || 0 });
 });
 
         //my-request data api
