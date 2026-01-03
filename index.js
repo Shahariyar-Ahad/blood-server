@@ -11,25 +11,23 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 4000; 
 const app = express();
-try {
-    
-    const serviceAccount = require('./blood-donar-firebase-admin.json'); 
-    
-    if (!admin.apps.length) { 
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
+if (!admin.apps.length) {
+    try {
+        const serviceKey = process.env.FIREBASE_SERVICE_KEY;
+        if (serviceKey) {
+            const decoded = Buffer.from(serviceKey, "base64").toString("utf8");
+            const serviceAccount = JSON.parse(decoded);
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log("✅ Firebase Admin Initialized via Environment Variable!");
+        } else {
+            console.warn("⚠️ Warning: FIREBASE_SERVICE_KEY not found in .env");
+        }
+    } catch (error) {
+        console.error("❌ Firebase Initialization Error:", error.message);
     }
-    console.log("✅ Firebase Admin Initialized Successfully!");
-} catch (error) {
-    console.error("❌ Firebase Initialization Error:", error.message);
 }
-// index.js
-const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
-const serviceAccount = JSON.parse(decoded); 
-admin.initializeApp({
-    credential:admin.credential.cert(serviceAccount)
-})
 
 // Configuration
 const jwtSecret = process.env.ACCESS_TOKEN_SECRET; 
