@@ -92,7 +92,7 @@ const verifyJWT = (req, res, next) => {
 
 async function run() {
     try {
-        // await client.connect();
+         await client.connect();
         
         const database = client.db('bloodDonarDB'); 
         const userCollections = database.collection('users');
