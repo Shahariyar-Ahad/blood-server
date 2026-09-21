@@ -6,8 +6,14 @@ const admin = require('firebase-admin');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
-// FIX: stripe আগে কোথাও require করা ছিল না
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// FIX: STRIPE_SECRET_KEY env variable না থাকলে যেন পুরো সার্ভার crash না করে।
+// key না থাকলে stripe = null থাকবে, শুধু payment রুট কল হলে error দেখাবে।
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+} else {
+    console.warn('⚠️ STRIPE_SECRET_KEY not set — payment routes will fail until it is added.');
+}
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -570,6 +576,9 @@ app.get('/blogs', async (req, res) => {
 // ====================================================
 
 app.post('/create-payment-intent', async (req, res) => {
+    if (!stripe) {
+        return res.status(500).send({ error: 'Stripe is not configured on the server (missing STRIPE_SECRET_KEY).' });
+    }
     try {
         const amount = Math.round(req.body.price * 100);
         const paymentIntent = await stripe.paymentIntents.create({
