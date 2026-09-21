@@ -127,23 +127,27 @@ const verifyAdmin = async (req, res, next) => {
 // A. AUTH & USER APIs
 // ====================================================
 
+// FIX: আসল authentication Firebase দিয়ে হচ্ছে (client-side)।
+// এই backend শুধু MongoDB-তে profile তথ্য রাখে, তাই password/bcrypt লাগবে না।
 app.post('/users/register', async (req, res) => {
     try {
         const userCollections = await collections.users();
         const userInfo = req.body;
-        const { email, password } = userInfo;
+        const { email } = userInfo;
+
+        if (!email) {
+            return res.status(400).send({ message: 'Email is required' });
+        }
 
         const existingUser = await userCollections.findOne({ email });
         if (existingUser) {
             return res.status(400).send({ message: 'User already exists with this email' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = {
             ...userInfo,
-            password: hashedPassword,
-            role: 'donor',
-            status: 'active',
+            role: userInfo.role || 'donor',
+            status: userInfo.status || 'active',
             createdAt: new Date(),
         };
 
@@ -160,7 +164,7 @@ app.post('/users/register', async (req, res) => {
                 email: newUser.email,
                 role: newUser.role,
                 name: newUser.name,
-                image: newUser.image,
+                image: newUser.avatar || newUser.image,
                 status: newUser.status,
             },
             token,
@@ -171,16 +175,19 @@ app.post('/users/register', async (req, res) => {
     }
 });
 
+// FIX: password compare বাদ — Firebase আগেই login verify করে ফেলেছে,
+// এই রুট শুধু MongoDB থেকে profile/role/token ফেরত দেয়।
 app.post('/users/login', async (req, res) => {
     try {
         const userCollections = await collections.users();
-        const { email, password } = req.body;
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).send({ message: 'Email is required' });
+        }
+
         const user = await userCollections.findOne({ email });
-
         if (!user) return res.status(401).send({ message: 'Invalid credentials' });
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(401).send({ message: 'Password does not match' });
 
         const token = jwt.sign(
             { email: user.email, role: user.role, name: user.name },
@@ -193,7 +200,7 @@ app.post('/users/login', async (req, res) => {
                 email: user.email,
                 role: user.role,
                 name: user.name,
-                image: user.image,
+                image: user.avatar || user.image,
                 status: user.status,
             },
             token,
